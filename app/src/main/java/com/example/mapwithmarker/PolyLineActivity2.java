@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -43,6 +44,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.maps.android.SphericalUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -78,7 +80,7 @@ public class PolyLineActivity2 extends AppCompatActivity
     String[] REQUIRED_PERMISSIONS  = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};  // 외부 저장소
 
 
-    Location mCurrentLocatiion;
+    Location mCurrentLocation;
     LatLng currentPosition;
 
 
@@ -91,8 +93,14 @@ public class PolyLineActivity2 extends AppCompatActivity
     private View mLayout;  // Snackbar 사용하기 위해서는 View가 필요함
     // (참고로 Toast에서는 Context가 필요함)
 
-
+    // 김종민
     Button startBtn;
+    Button stopBtn;
+    TextView tv_timer;
+    TextView tv_distance;
+    double totDistance;
+    //
+
 
 
     @Override
@@ -131,17 +139,41 @@ public class PolyLineActivity2 extends AppCompatActivity
         // 최초 지도 숨김
         mapFragment.getView().setVisibility(View.GONE);
 
+
+        // 김종민
         startBtn = findViewById(R.id.startBtn);
+        stopBtn = findViewById(R.id.stopBtn);
+        tv_distance = findViewById(R.id.tv_distance);
+        tv_timer = findViewById(R.id.tv_timer);
 
         startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // START버튼 클릭 시 지도 보임
                 Snackbar.make(view, "위치 추적을 시작합니다", Snackbar.LENGTH_LONG).show();
+
+                // 김종민
+                // start버튼 클릭 시 텍스트 초기화
+                tv_distance.setText("주행거리 : 0 m");
+                //
+
                 mapFragment.getView().setVisibility(View.VISIBLE);
                 startLocationUpdates();
             }
         });
+
+        stopBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                // 김종민
+                // STOP버튼 클릭 시 위치 업데이트 종료
+                Snackbar.make(view, "위치 추적을 종료합니다", Snackbar.LENGTH_LONG).show();
+                init();
+                //
+            }
+        });
+        //
     }
 
     @Override
@@ -233,6 +265,7 @@ public class PolyLineActivity2 extends AppCompatActivity
                 double latitude =location.getLatitude();
                 double longtitude=location.getLongitude();
 
+
                 if(startLatLng.latitude==0&&startLatLng.longitude==0){
                     startLatLng=new LatLng(latitude,longtitude);
                 }
@@ -252,9 +285,21 @@ public class PolyLineActivity2 extends AppCompatActivity
                 //현재 위치에 마커 생성하고 이동
                 setCurrentLocation(location, markerTitle, markerSnippet);
 
-                mCurrentLocatiion = location;
+                mCurrentLocation = location;
+
                 endLatLng = new LatLng(latitude, longtitude);
                 drawPath();
+
+
+                // 김종민
+                double distance = SphericalUtil.computeDistanceBetween(startLatLng, endLatLng);
+                totDistance += SphericalUtil.computeDistanceBetween(startLatLng, endLatLng);
+                tv_distance.setText("주행거리 : " + (double)Math.round(totDistance*100)/100 + "m");
+                Log.d(TAG, "현 주행거리 : " + distance + "m");
+                Log.d(TAG, "총 주행거리 : " + totDistance + "m");
+                //
+
+
                 startLatLng = new LatLng(latitude, longtitude);
 
             }
@@ -270,6 +315,12 @@ public class PolyLineActivity2 extends AppCompatActivity
         PolylineOptions options = new PolylineOptions().add(startLatLng).add(endLatLng).width(15).color(Color.BLACK).geodesic(true);
         polylines.add(mMap.addPolyline(options));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startLatLng, 18));
+    }
+
+    public void init(){
+        mMap.clear();
+        mFusedLocationClient.removeLocationUpdates(locationCallback);
+        totDistance = 0;
     }
 
 

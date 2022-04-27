@@ -115,6 +115,7 @@ public class PolyLineActivity2 extends AppCompatActivity
         mLayout = findViewById(R.id.map);
 
 
+
         locationRequest = new LocationRequest()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
                 .setInterval(UPDATE_INTERVAL_MS)
@@ -127,6 +128,8 @@ public class PolyLineActivity2 extends AppCompatActivity
 
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+
 
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -153,7 +156,8 @@ public class PolyLineActivity2 extends AppCompatActivity
                 Snackbar.make(view, "위치 추적을 시작합니다", Snackbar.LENGTH_LONG).show();
 
                 // 김종민
-                // start버튼 클릭 시 텍스트 초기화
+                // start버튼 클릭 시 주행거리 및 텍스트 초기화
+                totDistance = 0;
                 tv_distance.setText("주행거리 : 0 m");
                 //
 
@@ -325,6 +329,7 @@ public class PolyLineActivity2 extends AppCompatActivity
 
 
 
+
     @SuppressLint("MissingPermission")
     private void startLocationUpdates() {
 
@@ -390,7 +395,7 @@ public class PolyLineActivity2 extends AppCompatActivity
         if (mFusedLocationClient != null) {
 
             Log.d(TAG, "onStop : call stopLocationUpdates");
-            mFusedLocationClient.removeLocationUpdates(locationCallback);
+            //mFusedLocationClient.removeLocationUpdates(locationCallback);
         }
     }
 

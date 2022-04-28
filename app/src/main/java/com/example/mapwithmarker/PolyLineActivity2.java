@@ -22,10 +22,21 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -46,10 +57,20 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.maps.android.SphericalUtil;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 
 public class PolyLineActivity2 extends AppCompatActivity
@@ -74,15 +95,13 @@ public class PolyLineActivity2 extends AppCompatActivity
     private LatLng endLatLng = new LatLng(0, 0);
     List<Polyline> polylines =new ArrayList<>();
 
-
-
     // 앱을 실행하기 위해 필요한 퍼미션 정의
-    String[] REQUIRED_PERMISSIONS  = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};  // 외부 저장소
-
+    String[] REQUIRED_PERMISSIONS  = {Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_BACKGROUND_LOCATION};  // 외부 저장소
 
     Location mCurrentLocation;
     LatLng currentPosition;
-
 
     private FusedLocationProviderClient mFusedLocationClient;
     private LocationRequest locationRequest;
@@ -99,6 +118,12 @@ public class PolyLineActivity2 extends AppCompatActivity
     TextView tv_timer;
     TextView tv_distance;
     double totDistance;
+    Long totTime;
+    Date startTime;
+    Date endTime;
+
+    private String SERVER_URL = "http://124.49.91.86:8002/test/";
+    static RequestQueue requestQueue;
     //
 
 
@@ -113,8 +138,6 @@ public class PolyLineActivity2 extends AppCompatActivity
         setContentView(R.layout.activity_maps);
 
         mLayout = findViewById(R.id.map);
-
-
 
         locationRequest = new LocationRequest()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
@@ -159,6 +182,8 @@ public class PolyLineActivity2 extends AppCompatActivity
                 // start버튼 클릭 시 주행거리 및 텍스트 초기화
                 totDistance = 0;
                 tv_distance.setText("주행거리 : 0 m");
+                tv_timer.setText("주행시간 : 0 초");
+                startTime = getTime();
                 //
 
                 mapFragment.getView().setVisibility(View.VISIBLE);
@@ -173,10 +198,20 @@ public class PolyLineActivity2 extends AppCompatActivity
                 // 김종민
                 // STOP버튼 클릭 시 위치 업데이트 종료
                 Snackbar.make(view, "위치 추적을 종료합니다", Snackbar.LENGTH_LONG).show();
+                endTime = getTime();
+                totTime = getDurationTime(startTime, endTime);
+                Log.d(TAG, "총 주행거리 : " + totDistance + "m");
+                tv_timer.setText("주행시간 : " + totTime + "초");
+                Log.d(TAG, "주행시간 : " + totTime);
+                //makeRequest();
                 init();
                 //
             }
         });
+
+        if(requestQueue == null){
+            requestQueue = Volley.newRequestQueue(getApplicationContext())
+;        }
         //
     }
 
@@ -288,9 +323,7 @@ public class PolyLineActivity2 extends AppCompatActivity
 
                 //현재 위치에 마커 생성하고 이동
                 setCurrentLocation(location, markerTitle, markerSnippet);
-
                 mCurrentLocation = location;
-
                 endLatLng = new LatLng(latitude, longtitude);
                 drawPath();
 
@@ -327,7 +360,61 @@ public class PolyLineActivity2 extends AppCompatActivity
         totDistance = 0;
     }
 
+    // 서버로 데이터 전송하는 부분
+    public void makeRequest(){
+        String url = SERVER_URL;
 
+        RequestQueue queue = Volley.newRequestQueue(this);
+        JSONObject jsonBodyObj = new JSONObject();
+        try{
+            jsonBodyObj.put("dis",totDistance);
+            jsonBodyObj.put("time",totTime);
+        }catch (JSONException e){
+            e.printStackTrace();
+        }
+        final String requestBody = String.valueOf(jsonBodyObj.toString());
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, null,
+                //TODO 데이터 전송 요청 성공
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        Log.d(TAG, "응답값 -> " + response.toString());
+                    }
+                },
+                //TODO 데이터 전송 요청 에러 발생
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d(TAG, "에러 -> " + error.toString());
+                    }
+                })
+                //TODO 헤더값 선언 실시 및 Body 데이터 바이트 변환 실시
+        {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError{
+                HashMap<String, String> headers = new HashMap<String, String>();
+                headers.put("Content-Type", "application/json");
+                return headers;
+            }
+            @Override
+            public byte[] getBody() {
+                try {
+                    if (requestBody != null && requestBody.length()>0 && !requestBody.equals("")){
+                        return requestBody.getBytes("utf-8");
+                    }
+                    else {
+                        return null;
+                    }
+                } catch (UnsupportedEncodingException uee) {
+                    return null;
+                }
+            }
+        };
+
+        request.setShouldCache(false);
+        queue.add(request);
+    }
 
 
     @SuppressLint("MissingPermission")
@@ -385,7 +472,6 @@ public class PolyLineActivity2 extends AppCompatActivity
 
 
     }
-
 
     @Override
     protected void onStop() {
@@ -631,6 +717,23 @@ public class PolyLineActivity2 extends AppCompatActivity
 
                 break;
         }
+    }
+
+    private Date getTime() {
+        long now = System.currentTimeMillis();
+        Date date = new Date(now);
+
+        return date;
+    }
+
+    private long getDurationTime(Date startTime, Date EndTime) {
+        long duration = EndTime.getTime() - startTime.getTime();
+        long getDurationTime = duration / 1000;
+
+        //SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm:ss");
+        //String getTime = dateFormat.format(duration);
+
+        return getDurationTime;
     }
 
 

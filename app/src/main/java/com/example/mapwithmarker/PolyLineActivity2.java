@@ -115,6 +115,7 @@ public class PolyLineActivity2 extends AppCompatActivity
     // 김종민
     Button startBtn;
     Button stopBtn;
+    Button cameraBtn;
     TextView tv_timer;
     TextView tv_distance;
     double totDistance;
@@ -171,6 +172,7 @@ public class PolyLineActivity2 extends AppCompatActivity
         stopBtn = findViewById(R.id.stopBtn);
         tv_distance = findViewById(R.id.tv_distance);
         tv_timer = findViewById(R.id.tv_timer);
+
 
         startBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -701,20 +703,14 @@ public class PolyLineActivity2 extends AppCompatActivity
         switch (requestCode) {
 
             case GPS_ENABLE_REQUEST_CODE:
-
                 //사용자가 GPS 활성 시켰는지 검사
                 if (checkLocationServicesStatus()) {
                     if (checkLocationServicesStatus()) {
-
                         Log.d(TAG, "onActivityResult : GPS 활성화 되있음");
-
-
                         needRequest = true;
-
                         return;
                     }
                 }
-
                 break;
         }
     }
@@ -735,7 +731,6 @@ public class PolyLineActivity2 extends AppCompatActivity
 
         return getDurationTime;
     }
-
 
 
 }
